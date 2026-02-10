@@ -133,9 +133,9 @@ void execAdd(uint32_t instr) {
 
 void execAddi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    uint32_t l = getL(instr);
-    regs[rd] = regs[rd] + l; 
-    pc = pc + INC;
+    int32_t imm = getImm(instr);
+    regs[rd] = regs[rd] + imm;
+    pc += INC;
 }
 
 void execHalt() {
@@ -152,9 +152,9 @@ void execSub(uint32_t instr) {
 
 void execSubi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    uint32_t l = getL(instr);
-    regs[rd] = regs[rd] - l;
-    pc = pc + INC;
+    int32_t imm = getImm(instr);
+    regs[rd] = regs[rd] - imm;
+    pc += INC;
 }
 
 void execMul(uint32_t instr) {
@@ -218,8 +218,8 @@ void execShftr(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    regs[rd] = regs[rs] >> regs[rt];
-    pc = pc + INC;
+    regs[rd] = (uint64_t)((int64_t)regs[rs] >> regs[rt]);
+    pc += INC;
 }
 
 void execShftri(uint32_t instr) {
@@ -273,13 +273,15 @@ void execBrnz(uint32_t instr) {
 
 void execCall(uint32_t instr) {
     uint64_t ret = pc + INC;
-    store64(regs[31] - 8, ret);
+    regs[31] -= 8;
+    store64(regs[31], ret);
     uint32_t rd = getrd(instr);
     pc = regs[rd];
 }
 
 void execReturn() {
-    pc = load64(regs[31] - 8);
+    pc = load64(regs[31]);
+    regs[31] += 8;
 }
 
 void execBrgt(uint32_t instr) {

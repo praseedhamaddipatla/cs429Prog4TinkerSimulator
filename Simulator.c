@@ -116,7 +116,7 @@ uint32_t fetchInstr(void) {
 
 // handlers
 
-void execInvalid(uint32_t instr) {
+void execInvalid() {
     fprintf(stderr, "Simulation error\n");
     exit(1);
 }
@@ -133,13 +133,12 @@ void execAdd(uint32_t instr) {
 
 void execAddi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    uint32_t rs = getrs(instr);
     uint32_t l = getL(instr);
-    regs[rd] = regs[rs] + l;
+    regs[rd] = regs[rd] + l; 
     pc = pc + INC;
 }
 
-void execHalt(uint32_t instr) {
+void execHalt() {
     running = 0;
 }
 
@@ -273,21 +272,14 @@ void execBrnz(uint32_t instr) {
 }
 
 void execCall(uint32_t instr) {
-    // push return addr
     uint64_t ret = pc + INC;
-    uint64_t sp = regs[31];
-    sp = sp - 8;
-    store64(sp, ret);
-    regs[31] = sp;
+    store64(regs[31] - 8, ret);
     uint32_t rd = getrd(instr);
     pc = regs[rd];
 }
 
-void execReturn(uint32_t instr) {
-    uint64_t sp = regs[31];
-    uint64_t ret = load64(sp);
-    pc = ret;
-    regs[31] = sp + 8;
+void execReturn() {
+    pc = load64(regs[31] - 8);
 }
 
 void execBrgt(uint32_t instr) {
@@ -442,7 +434,7 @@ void runSim() {
             case 0x0A: execBrrL(instr); break;
             case 0x0B: execBrnz(instr); break;
             case 0x0C: execCall(instr); break;
-            case 0x0D: execReturn(instr); break;
+            case 0x0D: execReturn(); break;
             case 0x0E: execBrgt(instr); break;
             case 0x0F: execPriv(instr); break;
             case 0x10: execMovLoad(instr); break;
@@ -459,8 +451,8 @@ void runSim() {
             case 0x1B: execSubi(instr); break;
             case 0x1C: execMul(instr); break;
             case 0x1D: execDiv(instr); break;
-            case 0x3F: execHalt(instr); break;
-            default: execInvalid(instr); break;
+            case 0x3F: execHalt(); break;
+            default: execInvalid(); break;
         }
     }
 }

@@ -35,12 +35,9 @@ static uint32_t getL_unsigned(uint32_t i) {
     return i & 0xFFF;
 }
 
-// Use signed for memory offsets
-static int32_t getL_signed(uint32_t i) {
-    int32_t imm = i & 0xFFF;
-    if (imm & 0x800)
-        imm |= ~0xFFF;
-    return imm;
+static int32_t getImm16Signed(uint32_t i) {
+    int16_t imm = (int16_t)(i & 0xFFFF);
+    return (int32_t)imm;
 }
 
 // memory helpers
@@ -148,13 +145,13 @@ void execDiv(uint32_t i) {
 
 // mov
 void execMovLoad(uint32_t i) {
-    uint64_t addr = regs[getrs(i)] + getL_signed(i);
+    uint64_t addr = regs[getrs(i)] + getImm16Signed(i);
     regs[getrd(i)] = load64(addr);
     NEXT;
 }
 
 void execMovStore(uint32_t i) {
-    uint64_t addr = regs[getrd(i)] + getL_signed(i);
+    uint64_t addr = regs[getrd(i)] + getImm16Signed(i);
     store64(addr, regs[getrs(i)]);
     NEXT;
 }
@@ -261,7 +258,7 @@ void execDivf(uint32_t i) {
 
 void execBr(uint32_t i) { pc = regs[getrd(i)]; }
 void execBrrReg(uint32_t i) { pc += regs[getrd(i)]; }
-void execBrrImm(uint32_t i) { pc += getL_signed(i); }
+void execBrrImm(uint32_t i) { pc += getImm16Signed(i); }
 void execBrnz(uint32_t i) {
     if (regs[getrs(i)] == 0)
         NEXT;
@@ -270,11 +267,14 @@ void execBrnz(uint32_t i) {
 }
 void execCall(uint32_t i) {
     uint64_t retAddr = pc + INC;
-    store64(regs[31] - 8, retAddr);  // Just store, don't modify r31
+    regs[31] -= 8;  // DO modify r31
+    store64(regs[31], retAddr);
     pc = regs[getrd(i)];
 }
 void execReturn() {
-    pc = load64(regs[31] - 8);
+    uint64_t retAddr = load64(regs[31]);
+    regs[31] += 8;  // DO modify r31
+    pc = retAddr;
 }
 
 // main loop

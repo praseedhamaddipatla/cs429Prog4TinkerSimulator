@@ -33,34 +33,23 @@ void initMachine(void) {
 
 // instruction field helpers
 
-static uint32_t getOpcode(uint32_t instr) {
-    return instr & 0x1F; // bits 0–4
-}
+static uint32_t getOpcode(uint32_t instr) { return (instr >> 27) & 0x1F; }
 
-static uint32_t getrd(uint32_t instr) {
-    return (instr >> 5) & 0x1F; // bits 5–9
-}
+static uint32_t getrd(uint32_t instr) { return (instr >> 22) & 0x1F; }
 
-static uint32_t getrs(uint32_t instr) {
-    return (instr >> 10) & 0x1F; // bits 10–14
-}
+static uint32_t getrs(uint32_t instr) { return (instr >> 17) & 0x1F; }
 
-static uint32_t getrt(uint32_t instr) {
-    return (instr >> 15) & 0x1F; // bits 15–19
-}
+static uint32_t getrt(uint32_t instr) { return (instr >> 12) & 0x1F; }
 
 static int32_t getImm(uint32_t instr) {
-    // bits 20–31 (12-bit signed)
-    int32_t imm = (instr >> 20) & 0xFFF;
+    int32_t imm = instr & 0xFFF;
     if (imm & 0x800) {
-        imm |= 0xFFFFF000; // sign extend
+        imm |= 0xFFFFF000; // sign extend 12-bit immediate
     }
     return imm;
 }
 
-static uint32_t getL(uint32_t instr) {
-    return (instr >> 20) & 0xFFF; // bits 20–31 unsigned
-}
+static uint32_t getL(uint32_t instr) { return instr & 0xFFF; }
 
 static uint64_t load64(uint64_t addr) {
     if (addr > MEM_SIZE - 8) {

@@ -70,7 +70,7 @@ static uint32_t getL(uint32_t instr) {
 }
 
 static uint64_t load64(uint64_t addr) {
-    if (addr + 7 >= MEM_SIZE) {
+    if (addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -85,7 +85,7 @@ static uint64_t load64(uint64_t addr) {
 }
 
 static void store64(uint64_t addr, uint64_t val) {
-    if (addr + 7 >= MEM_SIZE) {
+    if (addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -100,7 +100,7 @@ static void store64(uint64_t addr, uint64_t val) {
 // fetch
 
 uint32_t fetchInstr(void) {
-    if (pc + 3 >= MEM_SIZE) {
+    if (pc > MEM_SIZE - 4) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -116,7 +116,7 @@ uint32_t fetchInstr(void) {
 
 // handlers
 
-void execInvalid() {
+void execInvalid(uint32_t instr) {
     fprintf(stderr, "Simulation error\n");
     exit(1);
 }
@@ -134,12 +134,12 @@ void execAdd(uint32_t instr) {
 void execAddi(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
-    int32_t imm = getImm(instr);
-    regs[rd] = regs[rs] + imm;
+    uint32_t l = getL(instr);
+    regs[rd] = regs[rs] + l;
     pc = pc + INC;
 }
 
-void execHalt() {
+void execHalt(uint32_t instr) {
     running = 0;
 }
 
@@ -153,8 +153,8 @@ void execSub(uint32_t instr) {
 
 void execSubi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    int32_t imm = getImm(instr);
-    regs[rd] = regs[rd] - imm;
+    uint32_t l = getL(instr);
+    regs[rd] = regs[rd] - l;
     pc = pc + INC;
 }
 
@@ -174,7 +174,9 @@ void execDiv(uint32_t instr) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
-    regs[rd] = regs[rs] / regs[rt];
+    int64_t srs = (int64_t)regs[rs];
+    int64_t srt = (int64_t)regs[rt];
+    regs[rd] = (uint64_t)(srs / srt);
     pc = pc + INC;
 }
 
@@ -281,7 +283,7 @@ void execCall(uint32_t instr) {
     pc = regs[rd];
 }
 
-void execReturn() {
+void execReturn(uint32_t instr) {
     uint64_t sp = regs[31];
     uint64_t ret = load64(sp);
     pc = ret;
@@ -440,7 +442,7 @@ void runSim() {
             case 0x0A: execBrrL(instr); break;
             case 0x0B: execBrnz(instr); break;
             case 0x0C: execCall(instr); break;
-            case 0x0D: execReturn(); break;
+            case 0x0D: execReturn(instr); break;
             case 0x0E: execBrgt(instr); break;
             case 0x0F: execPriv(instr); break;
             case 0x10: execMovLoad(instr); break;
@@ -457,8 +459,8 @@ void runSim() {
             case 0x1B: execSubi(instr); break;
             case 0x1C: execMul(instr); break;
             case 0x1D: execDiv(instr); break;
-            case 0x3F: execHalt(); break;
-            default: execInvalid(); break;
+            case 0x3F: execHalt(instr); break;
+            default: execInvalid(instr); break;
         }
     }
 }

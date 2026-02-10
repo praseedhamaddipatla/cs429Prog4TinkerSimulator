@@ -34,19 +34,19 @@ void initMachine(void) {
 // instruction field helpers
 
 static uint32_t getOpcode(uint32_t instr) {
-    return (instr >> 26) & 0x3F; // 6 bits starting at bit 26
+    return (instr >> 27) & 0x1F; // 5 bits at position 27
 }
 
 static uint32_t getrd(uint32_t instr) {
-    return (instr >> 21) & 0x1F; // 5 bits starting at bit 21
+    return (instr >> 22) & 0x1F; // 5 bits at position 22
 }
 
 static uint32_t getrs(uint32_t instr) {
-    return (instr >> 16) & 0x1F; // 5 bits starting at bit 16
+    return (instr >> 17) & 0x1F; // 5 bits at position 17
 }
 
 static uint32_t getrt(uint32_t instr) {
-    return (instr >> 11) & 0x1F; // 5 bits starting at bit 11
+    return (instr >> 12) & 0x1F; // 5 bits at position 12
 }
 
 static int32_t getImm(uint32_t instr) {
@@ -56,7 +56,7 @@ static int32_t getImm(uint32_t instr) {
 }
 
 static uint32_t getL(uint32_t instr) {
-    return instr & 0xFFFF; // 16-bit unsigned literal
+    return instr & 0xFFF; // 12-bit unsigned literal
 }
 
 static uint64_t load64(uint64_t addr) {
@@ -124,7 +124,7 @@ void execAdd(uint32_t instr) {
 void execAddi(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t l = getL(instr);
-    regs[rd] = regs[rd] + l; 
+    regs[rd] = regs[rd] + l;
     pc += INC;
 }
 
@@ -266,9 +266,7 @@ void execCall(uint32_t instr) {
     pc = regs[rd];
 }
 
-void execReturn() {
-    pc = load64(regs[31] - 8);
-}
+void execReturn() { pc = load64(regs[31] - 8); }
 
 void execBrgt(uint32_t instr) {
     uint32_t rd = getrd(instr);
@@ -499,7 +497,7 @@ void runSim() {
         case 0x1D:
             execDiv(instr);
             break;
-        case 0x3F:
+        case 0x1F:
             execHalt();
             break;
         default:

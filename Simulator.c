@@ -34,19 +34,24 @@ void initMachine(void) {
 // instruction field helpers
 
 static uint32_t getOpcode(uint32_t instr) {
-    // top 5 bits
-    return (instr >> 27) & 0x1F;
+    return instr & 0x1F; // bits 0–4
 }
 
-static uint32_t getrd(uint32_t instr) { return (instr >> 22) & 0x1F; }
+static uint32_t getrd(uint32_t instr) {
+    return (instr >> 5) & 0x1F; // bits 5–9
+}
 
-static uint32_t getrs(uint32_t instr) { return (instr >> 17) & 0x1F; }
+static uint32_t getrs(uint32_t instr) {
+    return (instr >> 10) & 0x1F; // bits 10–14
+}
 
-static uint32_t getrt(uint32_t instr) { return (instr >> 12) & 0x1F; }
+static uint32_t getrt(uint32_t instr) {
+    return (instr >> 15) & 0x1F; // bits 15–19
+}
 
 static int32_t getImm(uint32_t instr) {
-    // lower 12 bits, signed
-    int32_t imm = instr & 0xFFF;
+    // bits 20–31 (12-bit signed)
+    int32_t imm = (instr >> 20) & 0xFFF;
     if (imm & 0x800) {
         imm |= 0xFFFFF000; // sign extend
     }
@@ -54,8 +59,7 @@ static int32_t getImm(uint32_t instr) {
 }
 
 static uint32_t getL(uint32_t instr) {
-    // lower 12 bits, unsigned
-    return instr & 0xFFF;
+    return (instr >> 20) & 0xFFF; // bits 20–31 unsigned
 }
 
 static uint64_t load64(uint64_t addr) {
@@ -91,13 +95,8 @@ uint32_t fetchInstr(void) {
         exit(1);
     }
 
-    uint32_t instr = 0;
-    instr = instr | (mem[pc] << 24);
-    instr = instr | (mem[pc + 1] << 16);
-    instr = instr | (mem[pc + 2] << 8);
-    instr = instr | mem[pc + 3];
-
-    return instr;
+    return (uint32_t)mem[pc] | ((uint32_t)mem[pc + 1] << 8) |
+           ((uint32_t)mem[pc + 2] << 16) | ((uint32_t)mem[pc + 3] << 24);
 }
 
 // handlers

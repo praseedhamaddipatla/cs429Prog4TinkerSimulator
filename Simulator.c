@@ -7,7 +7,7 @@
 #define START 0x1000
 #define MEM_SIZE (1 << 19)
 #define REG 32
-#define INC 4
+#define INC 8
 
 // global machine state
 static uint64_t pc;
@@ -456,6 +456,8 @@ void runSim() {
             case 0x3F: execHalt(); break;
             default: execInvalid(); break;
         }
+
+        regs[0] = 0;
     }
 }
 

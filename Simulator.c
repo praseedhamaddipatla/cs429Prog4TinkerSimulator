@@ -411,7 +411,7 @@ int procFile(const char *file) {
 // main
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "Invalid tinker filepath\n", argv[0]);
+        fprintf(stderr, "Invalid tinker filepath\n");
         return 1;
     }
 

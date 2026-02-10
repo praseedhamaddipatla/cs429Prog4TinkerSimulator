@@ -8,6 +8,7 @@
 #define MEM_SIZE (1 << 19)
 #define REG 32
 #define INC 4
+#define DEBUG 1
 
 static uint64_t pc;
 static int running;
@@ -28,6 +29,7 @@ static uint32_t getOpcode(uint32_t i) { return (i >> 27) & 0x1F; }
 static uint32_t getrd(uint32_t i) { return (i >> 22) & 0x1F; }
 static uint32_t getrs(uint32_t i) { return (i >> 17) & 0x1F; }
 static uint32_t getrt(uint32_t i) { return (i >> 12) & 0x1F; }
+static inline uint64_t getImm(uint32_t instr) { return instr & 0xF; }
 
 static int32_t getL(uint32_t i) {
     int32_t imm = i & 0xFFF;
@@ -38,7 +40,7 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr + 7 >= MEM_SIZE) {
+    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -50,7 +52,7 @@ uint64_t load64(uint64_t addr) {
 }
 
 void store64(uint64_t addr, uint64_t val) {
-    if (addr + 7 >= MEM_SIZE) {
+    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -68,7 +70,6 @@ uint32_t fetchInstr(void) {
 
     uint32_t instr = mem[pc] | (mem[pc + 1] << 8) | (mem[pc + 2] << 16) |
                      (mem[pc + 3] << 24);
-
     return instr;
 }
 
@@ -167,34 +168,72 @@ void execMovImm(uint32_t i) {
 // control
 void execBrgt(uint32_t i) {
     if ((int64_t)regs[getrd(i)] > (int64_t)regs[getrs(i)])
-        pc += getL(i);
+        pc = regs[getrd(i)];
     else
         NEXT;
 }
 
 // priv
 void execPriv(uint32_t i) {
-    int L = getL(i);
+    uint32_t L = getImm(i);
+    uint32_t rd = getrd(i);
+    uint32_t rs = getrs(i);
 
-    if (L == 0) {
-        running = 0;
+    switch (L) {
+    case 0x0: // HALT
+        exit(0);
+
+    case 0x3: { // INPUT
+        uint64_t port = regs[rs];
+        if (port != 0) {
+            fprintf(stderr, "Simulation error\n");
+            exit(1);
+        }
+
+        char buf[128];
+        if (!fgets(buf, sizeof(buf), stdin)) {
+            fprintf(stderr, "Simulation error\n");
+            exit(1);
+        }
+
+        char *end;
+        long long val = strtoll(buf, &end, 10);
+
+        if (end == buf) {
+            fprintf(stderr, "Simulation error\n");
+            exit(1);
+        }
+        while (*end) {
+            if (!isspace((unsigned char)*end)) {
+                fprintf(stderr, "Simulation error\n");
+                exit(1);
+            }
+            end++;
+        }
+
+        regs[rd] = (uint64_t)val;
+        pc += INC;
         return;
     }
 
-    if (L == 3) {
-        scanf("%lu", &regs[getrd(i)]);
-        NEXT;
-        return;
-    }
-    if (L == 4) {
-        if (regs[getrd(i)] == 1)
-            printf("%lu\n", regs[getrs(i)]);
-        NEXT;
+    case 0x4: { // OUTPUT
+        uint64_t port = regs[rd];
+        uint64_t value = regs[rs];
+
+        if (port != 1) {
+            fprintf(stderr, "Simulation error\n");
+            exit(1);
+        }
+
+        printf("%llu\n", (unsigned long long)value);
+        pc += INC;
         return;
     }
 
-    fprintf(stderr, "Simulation error\n");
-    exit(1);
+    default:
+        fprintf(stderr, "Simulation error\n");
+        exit(1);
+    }
 }
 
 // floating point
@@ -230,7 +269,7 @@ void execDivf(uint32_t i) {
     memcpy(&a, &regs[getrs(i)], 8);
     memcpy(&b, &regs[getrt(i)], 8);
     if (b == 0.0) {
-        fprintf(stderr, "Simulation error");
+        fprintf(stderr, "Simulation error\n");
         exit(1);
     }
     c = a / b;
@@ -238,12 +277,33 @@ void execDivf(uint32_t i) {
     pc += INC;
 }
 
+void execBr(uint32_t i) { pc = regs[getrd(i)]; }
+void execBrrReg(uint32_t i) { pc += regs[getrd(i)]; }
+void execBrrImm(uint32_t i) { pc += getL(i); }
+void execBrnz(uint32_t i) {
+    if (regs[getrs(i)] == 0)
+        NEXT;
+    else
+        pc = regs[getrd(i)];
+}
+void execCall(uint32_t i) {
+    uint64_t retAddr = pc + INC;
+    regs[31] -= 8;
+    store64(regs[31], retAddr);
+    pc = regs[getrd(i)];
+}
+void execReturn() {
+    uint64_t retAddr = load64(regs[31]);
+    regs[31] += 8;
+    pc = retAddr;
+}
+
 // main loop
 void runSim(void) {
-    int cnt = 0;
     while (running) {
         uint32_t i = fetchInstr();
         uint32_t op = getOpcode(i);
+
         switch (op) {
         case 0x00:
             execAnd(i);
@@ -269,6 +329,7 @@ void runSim(void) {
         case 0x07:
             execShftli(i);
             break;
+
         case 0x18:
             execAdd(i);
             break;
@@ -321,10 +382,27 @@ void runSim(void) {
             execDivf(i);
             break;
 
+        case 0x08:
+            execBr(i);
+            break;
+        case 0x09:
+            execBrrReg(i);
+            break;
+        case 0x0A:
+            execBrrImm(i);
+            break;
+        case 0x0B:
+            execBrnz(i);
+            break;
+        case 0x0C:
+            execCall(i);
+            break;
+        case 0x0D:
+            execReturn();
+            break;
+
         default:
-            fprintf(stderr,
-                    "Simulation error: unknown opcode 0x%02x at PC=0x%lx\n", op,
-                    pc);
+            fprintf(stderr, "Simulation error\n");
             exit(1);
         }
 
@@ -337,10 +415,12 @@ int procFile(const char *file) {
     FILE *f = fopen(file, "rb");
     if (!f)
         return 1;
+
     uint64_t a = START;
     int c;
     while ((c = fgetc(f)) != EOF)
         mem[a++] = c;
+
     fclose(f);
     return 0;
 }
@@ -351,8 +431,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Usage: %s <file>\n", argv[0]);
         return 1;
     }
+
     initMachine();
-    procFile(argv[1]);
+
+    if (procFile(argv[1]) != 0) {
+        fprintf(stderr, "Invalid tinker filepath\n");
+        return 1;
+    }
+
     runSim();
     return 0;
 }

@@ -2,7 +2,10 @@ build: build.sh
 	./build.sh
 
 run: Simulator.c
-	./hw4 output.tko
+	./hw4 test/full.tko
 
 test: AssemblerTest.c
-	gcc -Wall -Wextra -std=c11 Simulator.c SimulatorTest.c -lm -o hw4
+	./hw4 test.bin
+
+hex: test/full.tko
+	hexdump -C test/full.tko

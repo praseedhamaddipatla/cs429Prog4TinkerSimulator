@@ -7,7 +7,7 @@
 #define START 0x1000
 #define MEM_SIZE (1 << 19)
 #define REG 32
-#define INC 8
+#define INC 4
 
 // global machine state
 static uint64_t pc;
@@ -33,40 +33,29 @@ void initMachine(void) {
 
 // instruction field helpers
 
-static uint32_t getOpcode(uint32_t instr) { 
-    uint32_t op = (instr >> 26);
-    op = op & 0x3F;
-    return op;
+static uint32_t getOpcode(uint32_t instr) {
+    // top 5 bits
+    return (instr >> 27) & 0x1F;
 }
 
-static uint32_t getrd(uint32_t instr) { 
-    uint32_t rd = (instr >> 21);
-    rd = rd & 0x1F;
-    return rd;
-}
+static uint32_t getrd(uint32_t instr) { return (instr >> 22) & 0x1F; }
 
-static uint32_t getrs(uint32_t instr) { 
-    uint32_t rs = (instr >> 16);
-    rs = rs & 0x1F;
-    return rs;
-}
+static uint32_t getrs(uint32_t instr) { return (instr >> 17) & 0x1F; }
 
-static uint32_t getrt(uint32_t instr) { 
-    uint32_t rt = (instr >> 11);
-    rt = rt & 0x1F;
-    return rt;
-}
+static uint32_t getrt(uint32_t instr) { return (instr >> 12) & 0x1F; }
 
 static int32_t getImm(uint32_t instr) {
-    // lower 16 bits, sign-extended
-    int16_t imm = (int16_t)(instr & 0xFFFF);
-    return (int32_t)imm;
+    // lower 12 bits, signed
+    int32_t imm = instr & 0xFFF;
+    if (imm & 0x800) {
+        imm |= 0xFFFFF000; // sign extend
+    }
+    return imm;
 }
 
 static uint32_t getL(uint32_t instr) {
-    // unsigned literal (used for shifts, mov upper, priv)
-    uint32_t l = instr & 0xFFFF;
-    return l;
+    // lower 12 bits, unsigned
+    return instr & 0xFFF;
 }
 
 static uint64_t load64(uint64_t addr) {
@@ -76,10 +65,8 @@ static uint64_t load64(uint64_t addr) {
     }
 
     uint64_t val = 0;
-    int i;
-    for (i = 0; i < 8; i++) {
-        val = val << 8;
-        val = val | mem[addr + i];
+    for (int i = 7; i >= 0; i--) {
+        val = (val << 8) | mem[addr + i];
     }
     return val;
 }
@@ -90,10 +77,9 @@ static void store64(uint64_t addr, uint64_t val) {
         exit(1);
     }
 
-    int i;
-    for (i = 7; i >= 0; i--) {
+    for (int i = 0; i < 8; i++) {
         mem[addr + i] = val & 0xFF;
-        val = val >> 8;
+        val >>= 8;
     }
 }
 
@@ -138,9 +124,7 @@ void execAddi(uint32_t instr) {
     pc += INC;
 }
 
-void execHalt() {
-    running = 0;
-}
+void execHalt() { running = 0; }
 
 void execSub(uint32_t instr) {
     uint32_t rd = getrd(instr);
@@ -246,17 +230,17 @@ void execShftli(uint32_t instr) {
 
 // control flow
 
-void execBr(uint32_t instr) { 
+void execBr(uint32_t instr) {
     uint32_t rd = getrd(instr);
     pc = regs[rd];
 }
 
-void execBrr(uint32_t instr) { 
+void execBrr(uint32_t instr) {
     uint32_t rd = getrd(instr);
     pc = pc + regs[rd];
 }
 
-void execBrrL(uint32_t instr) { 
+void execBrrL(uint32_t instr) {
     int32_t imm = getImm(instr);
     pc = pc + imm;
 }
@@ -421,40 +405,104 @@ void runSim() {
     while (running) {
         uint32_t instr = fetchInstr();
         uint32_t op = getOpcode(instr);
-        
+
         switch (op) {
-            case 0x00: execAnd(instr); break;
-            case 0x01: execOr(instr); break;
-            case 0x02: execXor(instr); break;
-            case 0x03: execNot(instr); break;
-            case 0x04: execShftr(instr); break;
-            case 0x05: execShftri(instr); break;
-            case 0x06: execShftl(instr); break;
-            case 0x07: execShftli(instr); break;
-            case 0x08: execBr(instr); break;
-            case 0x09: execBrr(instr); break;
-            case 0x0A: execBrrL(instr); break;
-            case 0x0B: execBrnz(instr); break;
-            case 0x0C: execCall(instr); break;
-            case 0x0D: execReturn(); break;
-            case 0x0E: execBrgt(instr); break;
-            case 0x0F: execPriv(instr); break;
-            case 0x10: execMovLoad(instr); break;
-            case 0x11: execMovReg(instr); break;
-            case 0x12: execMovUpper(instr); break;
-            case 0x13: execMovStore(instr); break;
-            case 0x14: execAddf(instr); break;
-            case 0x15: execSubf(instr); break;
-            case 0x16: execMulf(instr); break;
-            case 0x17: execDivf(instr); break;
-            case 0x18: execAdd(instr); break;
-            case 0x19: execAddi(instr); break;
-            case 0x1A: execSub(instr); break;
-            case 0x1B: execSubi(instr); break;
-            case 0x1C: execMul(instr); break;
-            case 0x1D: execDiv(instr); break;
-            case 0x3F: execHalt(); break;
-            default: execInvalid(); break;
+        case 0x00:
+            execAnd(instr);
+            break;
+        case 0x01:
+            execOr(instr);
+            break;
+        case 0x02:
+            execXor(instr);
+            break;
+        case 0x03:
+            execNot(instr);
+            break;
+        case 0x04:
+            execShftr(instr);
+            break;
+        case 0x05:
+            execShftri(instr);
+            break;
+        case 0x06:
+            execShftl(instr);
+            break;
+        case 0x07:
+            execShftli(instr);
+            break;
+        case 0x08:
+            execBr(instr);
+            break;
+        case 0x09:
+            execBrr(instr);
+            break;
+        case 0x0A:
+            execBrrL(instr);
+            break;
+        case 0x0B:
+            execBrnz(instr);
+            break;
+        case 0x0C:
+            execCall(instr);
+            break;
+        case 0x0D:
+            execReturn();
+            break;
+        case 0x0E:
+            execBrgt(instr);
+            break;
+        case 0x0F:
+            execPriv(instr);
+            break;
+        case 0x10:
+            execMovLoad(instr);
+            break;
+        case 0x11:
+            execMovReg(instr);
+            break;
+        case 0x12:
+            execMovUpper(instr);
+            break;
+        case 0x13:
+            execMovStore(instr);
+            break;
+        case 0x14:
+            execAddf(instr);
+            break;
+        case 0x15:
+            execSubf(instr);
+            break;
+        case 0x16:
+            execMulf(instr);
+            break;
+        case 0x17:
+            execDivf(instr);
+            break;
+        case 0x18:
+            execAdd(instr);
+            break;
+        case 0x19:
+            execAddi(instr);
+            break;
+        case 0x1A:
+            execSub(instr);
+            break;
+        case 0x1B:
+            execSubi(instr);
+            break;
+        case 0x1C:
+            execMul(instr);
+            break;
+        case 0x1D:
+            execDiv(instr);
+            break;
+        case 0x3F:
+            execHalt();
+            break;
+        default:
+            execInvalid();
+            break;
         }
 
         regs[0] = 0;

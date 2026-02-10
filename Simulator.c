@@ -33,28 +33,30 @@ void initMachine(void) {
 
 // instruction field helpers
 
-static uint32_t getOpcode(uint32_t instr) { return (instr >> 27) & 0x1F; }
-
-static uint32_t getrd(uint32_t instr) { return (instr >> 22) & 0x1F; }
-
-static uint32_t getrs(uint32_t instr) { return (instr >> 17) & 0x1F; }
-
-static uint32_t getrt(uint32_t instr) { return (instr >> 12) & 0x1F; }
-
-static int32_t getImm(uint32_t instr) {
-    int32_t imm = instr & 0xFFF;
-    if (imm & 0x800) {
-        imm |= 0xFFFFF000; // sign extend 12-bit immediate
-    }
-    return imm;
+static uint32_t getOpcode(uint32_t instr) {
+    return (instr >> 26) & 0x3F; // 6 bits starting at bit 26
 }
 
-static int32_t getL(uint32_t instr) {
-    int32_t l = instr & 0xFFF;
-    if (l & 0x800) {
-        l |= 0xFFFFF000; // sign-extend 12-bit
-    }
-    return l;
+static uint32_t getrd(uint32_t instr) {
+    return (instr >> 21) & 0x1F; // 5 bits starting at bit 21
+}
+
+static uint32_t getrs(uint32_t instr) {
+    return (instr >> 16) & 0x1F; // 5 bits starting at bit 16
+}
+
+static uint32_t getrt(uint32_t instr) {
+    return (instr >> 11) & 0x1F; // 5 bits starting at bit 11
+}
+
+static int32_t getImm(uint32_t instr) {
+    // 16-bit signed immediate
+    int16_t imm = (int16_t)(instr & 0xFFFF);
+    return (int32_t)imm;
+}
+
+static uint32_t getL(uint32_t instr) {
+    return instr & 0xFFFF; // 16-bit unsigned literal
 }
 
 static uint64_t load64(uint64_t addr) {
@@ -64,8 +66,10 @@ static uint64_t load64(uint64_t addr) {
     }
 
     uint64_t val = 0;
-    for (int i = 0; i < 8; i++) {
-        val |= ((uint64_t)mem[addr + i]) << (8 * i);
+    int i;
+    // little-endian order (LSB first)
+    for (i = 0; i < 8; i++) {
+        val |= ((uint64_t)mem[addr + i]) << (i * 8);
     }
     return val;
 }
@@ -76,9 +80,10 @@ static void store64(uint64_t addr, uint64_t val) {
         exit(1);
     }
 
-    for (int i = 0; i < 8; i++) {
-        mem[addr + i] = val & 0xFF;
-        val >>= 8;
+    int i;
+    // little-endian order (LSB first)
+    for (i = 0; i < 8; i++) {
+        mem[addr + i] = (val >> (i * 8)) & 0xFF;
     }
 }
 
@@ -90,20 +95,13 @@ uint32_t fetchInstr(void) {
         exit(1);
     }
 
-    return (uint32_t)mem[pc] | ((uint32_t)mem[pc + 1] << 8) |
-           ((uint32_t)mem[pc + 2] << 16) | ((uint32_t)mem[pc + 3] << 24);
-}
+    uint32_t instr = 0;
+    instr |= (uint32_t)mem[pc];
+    instr |= (uint32_t)mem[pc + 1] << 8;
+    instr |= (uint32_t)mem[pc + 2] << 16;
+    instr |= (uint32_t)mem[pc + 3] << 24;
 
-// handler helpers
-
-static double getDouble(uint32_t r) {
-    double d;
-    memcpy(&d, &regs[r], sizeof(double));
-    return d;
-}
-
-static void setDouble(uint32_t r, double v) {
-    memcpy(&regs[r], &v, sizeof(double));
+    return instr;
 }
 
 // handlers
@@ -125,8 +123,8 @@ void execAdd(uint32_t instr) {
 
 void execAddi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    int32_t imm = getImm(instr);
-    regs[rd] = regs[rd] + imm;
+    uint32_t l = getL(instr);
+    regs[rd] = regs[rd] + l; 
     pc += INC;
 }
 
@@ -142,8 +140,8 @@ void execSub(uint32_t instr) {
 
 void execSubi(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    int32_t imm = getImm(instr);
-    regs[rd] = regs[rd] - imm;
+    uint32_t l = getL(instr);
+    regs[rd] = regs[rd] - l;
     pc += INC;
 }
 
@@ -208,7 +206,7 @@ void execShftr(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    regs[rd] = (uint64_t)((int64_t)regs[rs] >> regs[rt]);
+    regs[rd] = regs[rs] >> regs[rt];
     pc += INC;
 }
 
@@ -243,12 +241,12 @@ void execBr(uint32_t instr) {
 
 void execBrr(uint32_t instr) {
     uint32_t rd = getrd(instr);
-    pc = pc + regs[rd] * 4;
+    pc = pc + regs[rd];
 }
 
 void execBrrL(uint32_t instr) {
-    int32_t l = getL(instr);
-    pc = pc + l * 4;
+    int32_t imm = getImm(instr);
+    pc = pc + imm;
 }
 
 void execBrnz(uint32_t instr) {
@@ -263,15 +261,13 @@ void execBrnz(uint32_t instr) {
 
 void execCall(uint32_t instr) {
     uint64_t ret = pc + INC;
-    regs[31] -= 8;
-    store64(regs[31], ret);
+    store64(regs[31] - 8, ret);
     uint32_t rd = getrd(instr);
     pc = regs[rd];
 }
 
 void execReturn() {
-    pc = load64(regs[31]);
-    regs[31] += 8;
+    pc = load64(regs[31] - 8);
 }
 
 void execBrgt(uint32_t instr) {
@@ -314,7 +310,7 @@ void execPriv(uint32_t instr) {
         uint32_t rs = getrs(instr);
         uint64_t p = regs[rd];
         if (p == 1) {
-            printf("%lu", regs[rs]);
+            printf("%lu\n", regs[rs]);
         }
         pc = pc + INC;
     } else {
@@ -328,10 +324,11 @@ void execPriv(uint32_t instr) {
 void execMovLoad(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
-    int64_t l = getL(instr);
-    uint64_t addr = regs[rs] + l * 8;
-    regs[rd] = load64(addr);
-    pc += INC;
+    int32_t imm = getImm(instr);
+    uint64_t addr = regs[rs] + imm;
+    uint64_t val = load64(addr);
+    regs[rd] = val;
+    pc = pc + INC;
 }
 
 void execMovReg(uint32_t instr) {
@@ -355,47 +352,52 @@ void execMovUpper(uint32_t instr) {
 void execMovStore(uint32_t instr) {
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
-    int64_t l = getL(instr);
-    uint64_t addr = regs[rd] + l * 8;
-    store64(addr, regs[rs]);
-    pc += INC;
+    int32_t imm = getImm(instr);
+    uint64_t addr = regs[rd] + imm;
+    uint64_t val = regs[rs];
+    store64(addr, val);
+    pc = pc + INC;
 }
 
 // floating point
 
 void execAddf(uint32_t instr) {
+    double *d = (double *)regs;
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    setDouble(rd, getDouble(rs) + getDouble(rt));
-    pc += INC;
+    d[rd] = d[rs] + d[rt];
+    pc = pc + INC;
 }
 
 void execSubf(uint32_t instr) {
+    double *d = (double *)regs;
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    setDouble(rd, getDouble(rs) - getDouble(rt));
+    d[rd] = d[rs] - d[rt];
     pc = pc + INC;
 }
 
 void execMulf(uint32_t instr) {
+    double *d = (double *)regs;
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    setDouble(rd, getDouble(rs) * getDouble(rt));
+    d[rd] = d[rs] * d[rt];
     pc = pc + INC;
 }
 
 void execDivf(uint32_t instr) {
+    double *d = (double *)regs;
     uint32_t rd = getrd(instr);
     uint32_t rs = getrs(instr);
     uint32_t rt = getrt(instr);
-    if(getDouble(rt)){
+    if (d[rt] == 0.0) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
-    setDouble(rd, getDouble(rs) / getDouble(rt));
+    d[rd] = d[rs] / d[rt];
     pc = pc + INC;
 }
 
@@ -505,7 +507,7 @@ void runSim() {
             break;
         }
 
-        regs[0] = 0;
+        regs[0] = 0; // keep r0 always zero
     }
 }
 

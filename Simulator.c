@@ -182,8 +182,6 @@ void execBrgt(uint32_t instr) {
 // priv
 void execPriv(uint32_t i) {
     uint32_t L = getImm(i);
-    uint32_t rd = getrd(i);
-    uint32_t rs = getrs(i);
 
     switch (L) {
     case 0x0: // HALT
@@ -210,7 +208,7 @@ void execPriv(uint32_t i) {
         uint32_t rs = getrs(i);
         uint64_t p = regs[rd];
         if (p == 1) { // Only output to port 1
-            printf("%lu\n", (unsigned long long)regs[rs]);
+            printf("%lu\n", (long unsigned int)regs[rs]);
         }
         pc = pc + INC;
         return;

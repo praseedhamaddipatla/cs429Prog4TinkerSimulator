@@ -163,15 +163,7 @@ void execMovReg(uint32_t i) {
 }
 
 void execMovImm(uint32_t i) {
-    uint32_t rd = getrd(i);
-    uint64_t L = getImm(i);   // UNSIGNED 12-bit
-
-    // Clear top 12 bits (bits 52–63)
-    regs[rd] &= 0x000FFFFFFFFFFFFFULL;
-
-    // Set top 12 bits
-    regs[rd] |= (L & 0xFFFULL) << 52;
-
+    regs[getrd(i)] = getL(i);
     NEXT;
 }
 

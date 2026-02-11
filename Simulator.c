@@ -43,7 +43,8 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
+    if (addr % 8 != 0 ||
+        addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -55,7 +56,8 @@ uint64_t load64(uint64_t addr) {
 }
 
 void store64(uint64_t addr, uint64_t val) {
-    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
+    if (addr % 8 != 0 ||
+        addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -63,6 +65,7 @@ void store64(uint64_t addr, uint64_t val) {
     for (int i = 0; i < 8; i++)
         mem[addr + i] = (val >> (8 * i)) & 0xFF;
 }
+
 
 // fetch
 uint32_t fetchInstr(void) {

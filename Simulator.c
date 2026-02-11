@@ -68,8 +68,12 @@ uint32_t fetchInstr(void) {
         exit(1);
     }
 
-    uint32_t instr = mem[pc] | (mem[pc + 1] << 8) | (mem[pc + 2] << 16) |
-                     (mem[pc + 3] << 24);
+    uint32_t instr =
+    ((uint32_t)mem[pc]) |
+    ((uint32_t)mem[pc + 1] << 8) |
+    ((uint32_t)mem[pc + 2] << 16) |
+    ((uint32_t)mem[pc + 3] << 24);
+
     return instr;
 }
 
@@ -100,7 +104,7 @@ void execShftr(uint32_t i) {
     NEXT;
 }
 void execShftri(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] >> getL(i);
+    regs[getrd(i)] >>= getL(i);
     NEXT;
 }
 void execShftl(uint32_t i) {
@@ -108,7 +112,7 @@ void execShftl(uint32_t i) {
     NEXT;
 }
 void execShftli(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] << getL(i);
+    regs[getrd(i)] <<= getL(i);
     NEXT;
 }
 
@@ -118,7 +122,7 @@ void execAdd(uint32_t i) {
     NEXT;
 }
 void execAddi(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] + getL(i);
+    regs[getrd(i)] += getL(i);
     NEXT;
 }
 void execSub(uint32_t i) {
@@ -126,7 +130,7 @@ void execSub(uint32_t i) {
     NEXT;
 }
 void execSubi(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] - getL(i);
+    regs[getrd(i)] -= getL(i);
     NEXT;
 }
 void execMul(uint32_t i) {
@@ -161,7 +165,12 @@ void execMovReg(uint32_t i) {
 }
 
 void execMovImm(uint32_t i) {
-    regs[getrd(i)] = getL(i);
+    uint64_t L = getImm(i);      // unsigned 12-bit
+    uint32_t rd = getrd(i);
+
+    regs[rd] &= ~(0xFFFULL << 52);  // clear bits 52–63
+    regs[rd] |= (L & 0xFFFULL) << 52;
+
     NEXT;
 }
 

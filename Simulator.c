@@ -1,6 +1,4 @@
-
 #include <ctype.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,11 +19,10 @@ static uint8_t mem[MEM_SIZE];
 void initMachine(void) {
     memset(mem, 0, sizeof(mem));
     memset(regs, 0, sizeof(regs));
-    regs[31] = MEM_SIZE - 8;   // FIXED
+    regs[31] = MEM_SIZE;
     pc = START;
     running = 1;
 }
-
 
 // helpers
 static uint32_t getOpcode(uint32_t i) { return (i >> 27) & 0x1F; }
@@ -43,8 +40,7 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr % 8 != 0 ||
-        addr > MEM_SIZE - 8) {
+    if (addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -56,8 +52,7 @@ uint64_t load64(uint64_t addr) {
 }
 
 void store64(uint64_t addr, uint64_t val) {
-    if (addr % 8 != 0 ||
-        addr > MEM_SIZE - 8) {
+    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -65,7 +60,6 @@ void store64(uint64_t addr, uint64_t val) {
     for (int i = 0; i < 8; i++)
         mem[addr + i] = (val >> (8 * i)) & 0xFF;
 }
-
 
 // fetch
 uint32_t fetchInstr(void) {

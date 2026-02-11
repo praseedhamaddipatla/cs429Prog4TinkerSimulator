@@ -41,7 +41,7 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr > MEM_SIZE - 8) {
+    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -162,7 +162,15 @@ void execMovReg(uint32_t i) {
 }
 
 void execMovImm(uint32_t i) {
-    regs[getrd(i)] = getL(i);
+    uint32_t rd = getrd(i);
+    uint64_t L = getImm(i); // unsigned 12-bit
+
+    // Clear top 12 bits
+    regs[rd] &= 0x000FFFFFFFFFFFFFULL;
+
+    // Set top 12 bits
+    regs[rd] |= (L << 52);
+
     NEXT;
 }
 
@@ -188,19 +196,31 @@ void execPriv(uint32_t i) {
     case 0x0: // HALT
         exit(0);
 
-    case 0x3: { // INPUT
+    case 0x3: {
         uint32_t rd = getrd(i);
         uint32_t rs = getrs(i);
         uint64_t p = regs[rs];
+
         if (p == 0) {
-            unsigned long long val;
-            if (scanf("%llu", &val) != 1) {
+            char buf[256];
+            if (!fgets(buf, sizeof(buf), stdin)) {
                 fprintf(stderr, "Simulation error\n");
                 exit(1);
             }
+
+            char *end;
+            unsigned long long val = strtoull(buf, &end, 10);
+
+            // Check full conversion and no negatives
+            if (end == buf || (*end != '\n' && *end != '\0')) {
+                fprintf(stderr, "Simulation error\n");
+                exit(1);
+            }
+
             regs[rd] = val;
         }
-        pc = pc + INC;
+
+        pc += INC;
         return;
     }
 

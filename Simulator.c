@@ -162,10 +162,9 @@ void execMovReg(uint32_t i) {
 }
 
 void execMovImm(uint32_t i) {
-    // FIXED: mov rd, L sets bits [52:63] which means the LOW 12 bits
-    // Preserve upper 52 bits, set lower 12 bits to L
+    // keep upper 52 bits, set lower 12 bits to L
     uint32_t rd = getrd(i);
-    uint64_t L = getImm(i);  // Unsigned 12-bit value
+    uint64_t L = getImm(i);  // unsigned
     regs[rd] = (regs[rd] & ~0xFFFULL) | L;
     NEXT;
 }
@@ -189,7 +188,7 @@ void execPriv(uint32_t i) {
     uint32_t L = getImm(i);
 
     switch (L) {
-    case 0x0: // HALT
+    case 0x0: // halt
         exit(0);
 
     case 0x3: {
@@ -213,13 +212,13 @@ void execPriv(uint32_t i) {
                 exit(1);
             }
 
-            // Reject negatives
+            // bad negatives
             if (buf[0] == '-') {
                 fprintf(stderr, "Simulation error\n");
                 exit(1);
             }
 
-            // Reject trailing junk
+            // trailing junk
             while (*end == ' ' || *end == '\t')
                 end++;
             if (*end != '\n' && *end != '\0') {
@@ -234,7 +233,7 @@ void execPriv(uint32_t i) {
         return;
     }
 
-    case 0x4: { // OUTPUT
+    case 0x4: { // output
         uint32_t rd = getrd(i);
         uint32_t rs = getrs(i);
         uint64_t p = regs[rd];
@@ -292,6 +291,8 @@ void execDivf(uint32_t i) {
     pc += INC;
 }
 
+//branch
+
 void execBr(uint32_t i) { pc = regs[getrd(i)]; }
 void execBrrReg(uint32_t i) { pc += regs[getrd(i)]; }
 void execBrrImm(uint32_t i) { pc += getL(i); }
@@ -303,11 +304,11 @@ void execBrnz(uint32_t i) {
 }
 void execCall(uint32_t i) {
     uint64_t retAddr = pc + INC;
-    store64(regs[31] - 8, retAddr);  // Store at r31-8 WITHOUT modifying r31
+    store64(regs[31] - 8, retAddr); //dont modify
     pc = regs[getrd(i)];
 }
 void execReturn() {
-    uint64_t retAddr = load64(regs[31] - 8);  // Load from r31-8 WITHOUT modifying r31
+    uint64_t retAddr = load64(regs[31] - 8);  // dont modify r31
     pc = retAddr;
 }
 

@@ -1,11 +1,11 @@
-build: build.sh
-	./build.sh
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -O2
 
-run: Simulator.c
-	./hw4 output1.tko
+all: test
 
-test: AssemblerTest.c
-	./hw4 test.bin
+test:
+	$(CC) $(CFLAGS) SimulatorTest.c -o test_runner
+	./test_runner
 
-hex: output1.tko
-	hexdump -C output1.tko
+clean:
+	rm -f sim test_runner test_*.bin out.txt

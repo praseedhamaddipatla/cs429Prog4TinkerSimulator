@@ -1,5 +1,6 @@
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -163,13 +164,13 @@ void execMovReg(uint32_t i) {
 
 void execMovImm(uint32_t i) {
     uint32_t rd = getrd(i);
-    uint64_t L = getImm(i); // unsigned 12-bit
+    uint64_t L = getImm(i);   // UNSIGNED 12-bit
 
-    // Clear top 12 bits
+    // Clear top 12 bits (bits 52–63)
     regs[rd] &= 0x000FFFFFFFFFFFFFULL;
 
     // Set top 12 bits
-    regs[rd] |= (L << 52);
+    regs[rd] |= (L & 0xFFFULL) << 52;
 
     NEXT;
 }
@@ -209,10 +210,24 @@ void execPriv(uint32_t i) {
             }
 
             char *end;
+            errno = 0;
             unsigned long long val = strtoull(buf, &end, 10);
 
-            // Check full conversion and no negatives
-            if (end == buf || (*end != '\n' && *end != '\0')) {
+            if (errno == ERANGE || end == buf) {
+                fprintf(stderr, "Simulation error\n");
+                exit(1);
+            }
+
+            // Reject negatives
+            if (buf[0] == '-') {
+                fprintf(stderr, "Simulation error\n");
+                exit(1);
+            }
+
+            // Reject trailing junk
+            while (*end == ' ' || *end == '\t')
+                end++;
+            if (*end != '\n' && *end != '\0') {
                 fprintf(stderr, "Simulation error\n");
                 exit(1);
             }

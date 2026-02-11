@@ -21,10 +21,11 @@ static uint8_t mem[MEM_SIZE];
 void initMachine(void) {
     memset(mem, 0, sizeof(mem));
     memset(regs, 0, sizeof(regs));
-    regs[31] = MEM_SIZE;
+    regs[31] = MEM_SIZE - 8;   // FIXED
     pc = START;
     running = 1;
 }
+
 
 // helpers
 static uint32_t getOpcode(uint32_t i) { return (i >> 27) & 0x1F; }

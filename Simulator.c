@@ -100,7 +100,7 @@ void execShftr(uint32_t i) {
     NEXT;
 }
 void execShftri(uint32_t i) {
-    regs[getrd(i)] >>= getL(i);
+    regs[getrd(i)] = regs[getrs(i)] >> getL(i);
     NEXT;
 }
 void execShftl(uint32_t i) {
@@ -108,7 +108,7 @@ void execShftl(uint32_t i) {
     NEXT;
 }
 void execShftli(uint32_t i) {
-    regs[getrd(i)] <<= getL(i);
+    regs[getrd(i)] = regs[getrs(i)] << getL(i);
     NEXT;
 }
 
@@ -118,7 +118,7 @@ void execAdd(uint32_t i) {
     NEXT;
 }
 void execAddi(uint32_t i) {
-    regs[getrd(i)] += getL(i);
+    regs[getrd(i)] = regs[getrs(i)] + getL(i);
     NEXT;
 }
 void execSub(uint32_t i) {
@@ -126,7 +126,7 @@ void execSub(uint32_t i) {
     NEXT;
 }
 void execSubi(uint32_t i) {
-    regs[getrd(i)] -= getL(i);
+    regs[getrd(i)] = regs[getrs(i)] - getL(i);
     NEXT;
 }
 void execMul(uint32_t i) {

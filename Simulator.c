@@ -20,7 +20,7 @@ static uint8_t mem[MEM_SIZE];
 void initMachine(void) {
     memset(mem, 0, sizeof(mem));
     memset(regs, 0, sizeof(regs));
-    regs[31] = MEM_SIZE;
+    regs[31] = MEM_SIZE - 8;  // FIX: Stack pointer must be at valid address
     pc = START;
     running = 1;
 }
@@ -41,7 +41,7 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
+    if (addr > MEM_SIZE - 8) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -49,7 +49,6 @@ uint64_t load64(uint64_t addr) {
     uint64_t v = 0;
     for (int i = 0; i < 8; i++)
         v |= ((uint64_t)mem[addr + i]) << (8 * i);
-
     return v;
 }
 

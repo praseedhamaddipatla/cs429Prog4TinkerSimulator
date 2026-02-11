@@ -20,7 +20,7 @@ static uint8_t mem[MEM_SIZE];
 void initMachine(void) {
     memset(mem, 0, sizeof(mem));
     memset(regs, 0, sizeof(regs));
-    regs[31] = MEM_SIZE - 8;  // FIX: Stack pointer must be at valid address
+    regs[31] = MEM_SIZE;
     pc = START;
     running = 1;
 }
@@ -79,59 +79,85 @@ uint32_t fetchInstr(void) {
 
 // logic
 void execAnd(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] & regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] & regs[getrt(i)];
     NEXT;
 }
 void execOr(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] | regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] | regs[getrt(i)];
     NEXT;
 }
 void execXor(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] ^ regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] ^ regs[getrt(i)];
     NEXT;
 }
 void execNot(uint32_t i) {
-    regs[getrd(i)] = ~regs[getrs(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = ~regs[getrs(i)];
     NEXT;
 }
 
 // shifts
 void execShftr(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] >> regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] >> regs[getrt(i)];
     NEXT;
 }
 void execShftri(uint32_t i) {
-    regs[getrd(i)] >>= getL(i);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] >>= getL(i);
     NEXT;
 }
 void execShftl(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] << regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] << regs[getrt(i)];
     NEXT;
 }
 void execShftli(uint32_t i) {
-    regs[getrd(i)] <<= getL(i);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] <<= getL(i);
     NEXT;
 }
 
 // arithmetic
 void execAdd(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] + regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] + regs[getrt(i)];
     NEXT;
 }
 void execAddi(uint32_t i) {
-    regs[getrd(i)] += getL(i);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] += getL(i);
     NEXT;
 }
 void execSub(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] - regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] - regs[getrt(i)];
     NEXT;
 }
 void execSubi(uint32_t i) {
-    regs[getrd(i)] -= getL(i);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] -= getL(i);
     NEXT;
 }
 void execMul(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)] * regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)] * regs[getrt(i)];
     NEXT;
 }
 void execDiv(uint32_t i) {
@@ -139,14 +165,18 @@ void execDiv(uint32_t i) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
-    regs[getrd(i)] = (int64_t)regs[getrs(i)] / (int64_t)regs[getrt(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = (int64_t)regs[getrs(i)] / (int64_t)regs[getrt(i)];
     NEXT;
 }
 
 // mov
 void execMovLoad(uint32_t i) {
     uint64_t addr = regs[getrs(i)] + getL(i);
-    regs[getrd(i)] = load64(addr);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = load64(addr);
     NEXT;
 }
 
@@ -157,12 +187,16 @@ void execMovStore(uint32_t i) {
 }
 
 void execMovReg(uint32_t i) {
-    regs[getrd(i)] = regs[getrs(i)];
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = regs[getrs(i)];
     NEXT;
 }
 
 void execMovImm(uint32_t i) {
-    regs[getrd(i)] = getL(i);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        regs[rd] = getL(i);
     NEXT;
 }
 
@@ -253,7 +287,9 @@ void execAddf(uint32_t i) {
     memcpy(&a, &regs[getrs(i)], 8);
     memcpy(&b, &regs[getrt(i)], 8);
     c = a + b;
-    memcpy(&regs[getrd(i)], &c, 8);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        memcpy(&regs[rd], &c, 8);
     pc += INC;
 }
 
@@ -262,7 +298,9 @@ void execSubf(uint32_t i) {
     memcpy(&a, &regs[getrs(i)], 8);
     memcpy(&b, &regs[getrt(i)], 8);
     c = a - b;
-    memcpy(&regs[getrd(i)], &c, 8);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        memcpy(&regs[rd], &c, 8);
     pc += INC;
 }
 
@@ -271,7 +309,9 @@ void execMulf(uint32_t i) {
     memcpy(&a, &regs[getrs(i)], 8);
     memcpy(&b, &regs[getrt(i)], 8);
     c = a * b;
-    memcpy(&regs[getrd(i)], &c, 8);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        memcpy(&regs[rd], &c, 8);
     pc += INC;
 }
 
@@ -284,7 +324,9 @@ void execDivf(uint32_t i) {
         exit(1);
     }
     c = a / b;
-    memcpy(&regs[getrd(i)], &c, 8);
+    uint32_t rd = getrd(i);
+    if (rd != 0)
+        memcpy(&regs[rd], &c, 8);
     pc += INC;
 }
 

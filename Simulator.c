@@ -303,13 +303,11 @@ void execBrnz(uint32_t i) {
 }
 void execCall(uint32_t i) {
     uint64_t retAddr = pc + INC;
-    regs[31] -= 8;
-    store64(regs[31], retAddr);
+    store64(regs[31] - 8, retAddr);  // Store at r31-8 WITHOUT modifying r31
     pc = regs[getrd(i)];
 }
 void execReturn() {
-    uint64_t retAddr = load64(regs[31]);
-    regs[31] += 8;
+    uint64_t retAddr = load64(regs[31] - 8);  // Load from r31-8 WITHOUT modifying r31
     pc = retAddr;
 }
 

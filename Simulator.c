@@ -41,7 +41,7 @@ static int32_t getL(uint32_t i) {
 
 // memory helpers
 uint64_t load64(uint64_t addr) {
-    if (addr > MEM_SIZE - 8) {
+    if (addr % 8 != 0 || addr + 7 >= MEM_SIZE) {
         fprintf(stderr, "Simulation error\n");
         exit(1);
     }
@@ -49,6 +49,7 @@ uint64_t load64(uint64_t addr) {
     uint64_t v = 0;
     for (int i = 0; i < 8; i++)
         v |= ((uint64_t)mem[addr + i]) << (8 * i);
+
     return v;
 }
 

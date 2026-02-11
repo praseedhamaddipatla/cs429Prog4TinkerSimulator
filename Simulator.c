@@ -29,7 +29,7 @@ static uint32_t getOpcode(uint32_t i) { return (i >> 27) & 0x1F; }
 static uint32_t getrd(uint32_t i) { return (i >> 22) & 0x1F; }
 static uint32_t getrs(uint32_t i) { return (i >> 17) & 0x1F; }
 static uint32_t getrt(uint32_t i) { return (i >> 12) & 0x1F; }
-static inline uint64_t getImm(uint32_t instr) { return instr & 0xF; }
+static inline uint64_t getImm(uint32_t instr) { return instr & 0xFFF; }
 
 static int32_t getL(uint32_t i) {
     int32_t imm = i & 0xFFF;
